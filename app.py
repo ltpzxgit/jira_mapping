@@ -1,72 +1,58 @@
 import streamlit as st
 import pandas as pd
 from io import BytesIO
+from openpyxl import load_workbook
 
 st.title("JIRA → LDSO Generator 🚀")
 
-uploaded_file = st.file_uploader("Upload JIRA CSV/XLSX", type=["csv", "xlsx"])
+jira_file = st.file_uploader("Upload JIRA", type=["csv"])
+template_file = st.file_uploader("Upload Template", type=["xlsx"])
 
-if uploaded_file is not None:
+if jira_file and template_file:
 
-    # ===== READ JIRA =====
-    if uploaded_file.name.endswith(".csv"):
-        df_jira = pd.read_csv(uploaded_file)
-    else:
-        df_jira = pd.read_excel(uploaded_file)
-
-    st.success("✅ JIRA Loaded")
-
-    # ===== LOAD TEMPLATE (ต้องอยู่ใน repo) =====
-    template_file = "JIRA_LDSO_template.xlsx"
-    df_template = pd.read_excel(template_file)
-
-    # 👉 เอา column จาก template เป๊ะๆ
-    template_columns = df_template.columns.tolist()
-
-    # ===== CREATE OUTPUT BASE ON TEMPLATE =====
-    df_output = pd.DataFrame(columns=template_columns)
+    df_jira = pd.read_csv(jira_file)
 
     # ===== SYSTEM LOGIC =====
     def map_system(summary):
         if pd.isna(summary):
             return None
-
         s = summary.upper()
-
         if 'AZURE' in s:
             return 'TCAP Cloud'
         elif 'L-DCM' in s:
             return 'LDCM'
-        else:
-            return None
+        return 'Other'
 
-    # ===== MAP DATA =====
-    for col in template_columns:
+    df_jira['System'] = df_jira['Summary'].apply(map_system)
 
-        if col == 'System':
-            df_output[col] = df_jira['Summary'].apply(map_system)
+    # ===== LOAD TEMPLATE (IMPORTANT) =====
+    wb = load_workbook(template_file)
+    ws = wb.active
 
-        elif col == 'Issue Key' and 'Issue key' in df_jira.columns:
-            df_output[col] = df_jira['Issue key']
+    # ===== EXAMPLE: FILL DATA =====
+    # 🔥 ตรงนี้คือ key ของงานนี้ (ต้อง match position)
 
-        elif col in df_jira.columns:
-            df_output[col] = df_jira[col]
+    # Total Incident
+    total_incident = len(df_jira[df_jira['Issue Type'] == 'Incident'])
+    ws['C5'] = total_incident
 
-        else:
-            # column ที่ไม่มีใน jira → ปล่อยว่าง
-            df_output[col] = None
+    # Rank A / B / C (สมมติใช้ Priority)
+    ws['C7'] = len(df_jira[df_jira['Priority'] == 'Highest'])
+    ws['C8'] = len(df_jira[df_jira['Priority'] == 'High'])
+    ws['C9'] = len(df_jira[df_jira['Priority'] == 'Medium'])
+
+    # Status count
+    ws['F9'] = len(df_jira[df_jira['Status'] == 'Investigating'])
+    ws['G9'] = len(df_jira[df_jira['Status'] == 'Fixing'])
+    ws['H9'] = len(df_jira[df_jira['Status'] == 'Under Confirmation'])
 
     # ===== EXPORT =====
     output = BytesIO()
-
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df_output.to_excel(writer, sheet_name='JIRA_LDSO', index=False)
-
+    wb.save(output)
     output.seek(0)
 
     st.download_button(
-        label="📥 Download LDSO",
+        "📥 Download LDSO",
         data=output,
-        file_name="JIRA_LDSO_Output.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        file_name="LDSO_Output.xlsx"
     )
