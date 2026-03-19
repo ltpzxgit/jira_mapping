@@ -4,61 +4,69 @@ from io import BytesIO
 
 st.title("JIRA → LDSO Generator 🚀")
 
-uploaded_file = st.file_uploader("Upload JIRA file", type=["csv", "xlsx"])
+uploaded_file = st.file_uploader("Upload JIRA CSV/XLSX", type=["csv", "xlsx"])
 
 if uploaded_file is not None:
 
-    # ===== AUTO DETECT FILE TYPE =====
+    # ===== READ JIRA =====
     if uploaded_file.name.endswith(".csv"):
         df_jira = pd.read_csv(uploaded_file)
     else:
         df_jira = pd.read_excel(uploaded_file)
 
-    st.success("✅ File uploaded")
+    st.success("✅ JIRA Loaded")
 
-    st.dataframe(df_jira.head())
+    # ===== LOAD TEMPLATE (ต้องอยู่ใน repo) =====
+    template_file = "JIRA_LDSO_template.xlsx"
+    df_template = pd.read_excel(template_file)
 
-    # ===== GENERATE BUTTON =====
-    if st.button("Generate LDSO"):
+    # 👉 เอา column จาก template เป๊ะๆ
+    template_columns = df_template.columns.tolist()
 
-        # ===== SYSTEM MAPPING =====
-        def map_system(summary):
-            if pd.isna(summary):
-                return None
+    # ===== CREATE OUTPUT BASE ON TEMPLATE =====
+    df_output = pd.DataFrame(columns=template_columns)
 
-            s = summary.upper()
+    # ===== SYSTEM LOGIC =====
+    def map_system(summary):
+        if pd.isna(summary):
+            return None
 
-            if 'AZURE' in s:
-                return 'TCAP Cloud'
-            elif 'L-DCM' in s:
-                return 'LDCM'
-            else:
-                return 'Other'
+        s = summary.upper()
 
-        # ===== CREATE OUTPUT =====
-        df_output = pd.DataFrame()
+        if 'AZURE' in s:
+            return 'TCAP Cloud'
+        elif 'L-DCM' in s:
+            return 'LDCM'
+        else:
+            return None
 
-        df_output['Issue Key'] = df_jira['Issue key']
-        df_output['Summary'] = df_jira['Summary']
-        df_output['System'] = df_jira['Summary'].apply(map_system)
-        df_output['Issue Type'] = df_jira['Issue Type']
-        df_output['Status'] = df_jira['Status']
-        df_output['Priority'] = df_jira['Priority']
-        df_output['Assignee'] = df_jira['Assignee']
-        df_output['Created'] = pd.to_datetime(df_jira['Created'], errors='coerce')
-        df_output['Updated'] = pd.to_datetime(df_jira['Updated'], errors='coerce')
+    # ===== MAP DATA =====
+    for col in template_columns:
 
-        # ===== EXPORT =====
-        output = BytesIO()
+        if col == 'System':
+            df_output[col] = df_jira['Summary'].apply(map_system)
 
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            df_output.to_excel(writer, sheet_name='JIRA_LDSO', index=False)
+        elif col == 'Issue Key' and 'Issue key' in df_jira.columns:
+            df_output[col] = df_jira['Issue key']
 
-        output.seek(0)
+        elif col in df_jira.columns:
+            df_output[col] = df_jira[col]
 
-        st.download_button(
-            label="📥 Download LDSO",
-            data=output,
-            file_name="JIRA_LDSO_Output.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
+        else:
+            # column ที่ไม่มีใน jira → ปล่อยว่าง
+            df_output[col] = None
+
+    # ===== EXPORT =====
+    output = BytesIO()
+
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df_output.to_excel(writer, sheet_name='JIRA_LDSO', index=False)
+
+    output.seek(0)
+
+    st.download_button(
+        label="📥 Download LDSO",
+        data=output,
+        file_name="JIRA_LDSO_Output.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
