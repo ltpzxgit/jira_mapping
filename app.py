@@ -1,46 +1,58 @@
-import streamlit as st
 import pandas as pd
-from io import BytesIO
 
-st.title("JIRA → LDSO Generator 🚀")
+# ===== LOAD =====
+jira_file = "JIRA (2).csv"
+template_file = "JIRA_LDSO as of 20260228 service mapping_Draft.xlsx"
 
-# ===== Upload File =====
-uploaded_file = st.file_uploader("Upload JIRA CSV", type=["csv"])
+df_jira = pd.read_csv(jira_file)
 
-if uploaded_file:
-    df_jira = pd.read_csv(uploaded_file)
+# ===== DEFINE TEMPLATE COLUMN =====
+# 👇 ใส่ column ตาม LDSO จริง (แก้ได้)
+template_columns = [
+    'Issue Key',
+    'Summary',
+    'System',
+    'Issue Type',
+    'Status',
+    'Priority',
+    'Assignee',
+    'Created',
+    'Updated'
+]
 
-    st.write("### Preview Data")
-    st.dataframe(df_jira.head())
+# ===== CREATE EMPTY DF =====
+df_output = pd.DataFrame(columns=template_columns)
 
-    # ===== Generate Button =====
-    if st.button("Generate LDSO File"):
-        
-        # ===== Mapping =====
-        column_mapping = {
-            'Issue key': 'Issue Key',
-            'Summary': 'Summary',
-            'Issue Type': 'Issue Type',
-            'Status': 'Status',
-            'Priority': 'Priority',
-            'Assignee': 'Assignee',
-            'Created': 'Created',
-            'Updated': 'Updated'
-        }
+# ===== MAP BASIC FIELD =====
+df_output['Issue Key'] = df_jira['Issue key']
+df_output['Summary'] = df_jira['Summary']
+df_output['Issue Type'] = df_jira['Issue Type']
+df_output['Status'] = df_jira['Status']
+df_output['Priority'] = df_jira['Priority']
+df_output['Assignee'] = df_jira['Assignee']
+df_output['Created'] = pd.to_datetime(df_jira['Created'], errors='coerce')
+df_output['Updated'] = pd.to_datetime(df_jira['Updated'], errors='coerce')
 
-        df_output = df_jira[list(column_mapping.keys())].rename(columns=column_mapping)
+# ===== DERIVE SYSTEM FROM SUMMARY =====
+def map_system(summary):
+    if pd.isna(summary):
+        return None
+    
+    summary = summary.upper()
 
-        # ===== Create Excel in Memory =====
-        output = BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            df_output.to_excel(writer, sheet_name='JIRA_LDSO', index=False)
+    if 'AZURE' in summary:
+        return 'TCAP Cloud'
+    elif 'L-DCM' in summary:
+        return 'LDCM'
+    else:
+        return 'Other'
 
-        output.seek(0)
+df_output['System'] = df_jira['Summary'].apply(map_system)
 
-        # ===== Download Button =====
-        st.download_button(
-            label="📥 Download LDSO File",
-            data=output,
-            file_name="JIRA_LDSO_Output.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
+# ===== EXPORT =====
+output_file = "JIRA_LDSO_Output.xlsx"
+
+with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
+    df_output.to_excel(writer, sheet_name='JIRA_LDSO', index=False)
+
+print("✅ Done แบบมี System + format ครบ")
