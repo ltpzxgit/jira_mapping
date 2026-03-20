@@ -15,8 +15,7 @@ def read_file(file):
 
 def generate_columns(df):
 
-    # 👇 สมมติ column D = "Description"
-    col = "Description"
+    col = "Description"  # 👈 เปลี่ยนตามจริงถ้าชื่อไม่ตรง
 
     # =========================
     # 🔹 System
@@ -92,16 +91,7 @@ def generate_columns(df):
     df["Change"] = ""
     df["Service Cat."] = ""
 
-    # 👇 เรียง column
-    result = df[[
-        "System",
-        "Change",
-        "Error Name",
-        "Service name",
-        "Service Cat."
-    ]]
-
-    return result
+    return df  # 👈 สำคัญ! คืน df เดิม + columns ใหม่
 
 
 if raw_file:
@@ -113,7 +103,7 @@ if raw_file:
 
         result_df = generate_columns(df)
 
-        st.subheader("✅ Result")
+        st.subheader("✅ Result (All Columns + New Ones)")
         st.dataframe(result_df.head())
 
         # Download
