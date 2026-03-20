@@ -1,12 +1,12 @@
 import streamlit as st
 import pandas as pd
 
-st.set_page_config(page_title="Column Standardizer", layout="wide")
+st.set_page_config(page_title="ITOSE Tools", layout="wide")
 
-st.title("📊 Excel Column Standardizer (Force Template + Auto Logic)")
+st.title("Tools Service Mapping)")
 
-raw_file = st.file_uploader("📥 Upload RAW data", type=["csv", "xlsx"])
-example_file = st.file_uploader("📌 Upload Example (Template)", type=["csv", "xlsx"])
+raw_file = st.file_uploader("Upload Jira", type=["csv", "xlsx"])
+example_file = st.file_uploader("Upload Template", type=["csv", "xlsx"])
 
 def read_file(file):
     if file.name.endswith('.csv'):
@@ -19,7 +19,7 @@ if raw_file and example_file:
         df_raw = read_file(raw_file)
         df_example = read_file(example_file)
 
-        st.subheader("📥 Raw Data")
+        st.subheader("Jira Data")
         st.dataframe(df_raw.head())
 
         # 👇 เลือก column ที่จะใช้แทน D2 (กันพลาด)
