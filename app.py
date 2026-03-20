@@ -3,7 +3,7 @@ import pandas as pd
 
 st.set_page_config(page_title="ITOSE Tools", layout="wide")
 
-st.title("TIOSE - Tools Service Mapping")
+st.title("ITOSE - Tools Service Mapping")
 
 raw_file = st.file_uploader("Upload Jira", type=["csv", "xlsx"])
 example_file = st.file_uploader("Upload Template", type=["csv", "xlsx"])
