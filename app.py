@@ -1,11 +1,12 @@
 import streamlit as st
 import pandas as pd
 
-st.set_page_config(page_title="Excel Auto Transform", layout="wide")
+st.set_page_config(page_title="Column Standardizer", layout="wide")
 
-st.title("📊 Auto Generate Columns Tool")
+st.title("📊 Excel Column Standardizer (Force Template + Auto Logic)")
 
 raw_file = st.file_uploader("📥 Upload RAW data", type=["csv", "xlsx"])
+example_file = st.file_uploader("📌 Upload Example (Template)", type=["csv", "xlsx"])
 
 def read_file(file):
     if file.name.endswith('.csv'):
@@ -13,97 +14,108 @@ def read_file(file):
     else:
         return pd.read_excel(file)
 
-def generate_columns(df):
-
-    col = "Description"  # 👈 เปลี่ยนตามจริงถ้าชื่อไม่ตรง
-
-    # =========================
-    # 🔹 System
-    # =========================
-    df["System"] = df[col].apply(
-        lambda x: "TCAP Cloud" if "azure" in str(x).lower() else "LDCM"
-    )
-
-    # =========================
-    # 🔹 Error Name
-    # =========================
-    error_list = [
-        "E_000_017",
-        "E_000_024",
-        "E_040_001",
-        "E_LDCM_ACT_009",
-        "E_LDCM_ACT_011",
-        "E_LDCM_ACT_021"
-    ]
-
-    def find_error(text):
-        text = str(text)
-        for err in error_list:
-            if err.lower() in text.lower():
-                return err
-        return ""
-
-    df["Error Name"] = df[col].apply(find_error)
-
-    # =========================
-    # 🔹 Service name
-    # =========================
-    service_list = [
-        "FDF Linkage",
-        "fdftcaplinkage",
-        "mb_accident_sending",
-        "precnv_bigdata_periodic",
-        "precnv_general_service",
-        "precnv_ig_off",
-        "ProvisioningResponder",
-        "send_message",
-        "B2B Linkage",
-        "B2C Linkage",
-        "dealer_at_ig_off",
-        "dealer_device_abnormal",
-        "drive_data_send",
-        "external_ig_off",
-        "external_mb_device_abnormal",
-        "svt_confirmation_access_monitoring",
-        "tcap_area_crossing_sending",
-        "tcap_ig_off_sending",
-        "tcap_periodic_sending",
-        "tcap_svt_timeout",
-        "tcap_uvun_ig_off_sending",
-        "tcap_uvun_ig_on_sending",
-        "vehicledeliverytcaplinkage",
-        "VehicleDeliveryTCAPLinkageVin",
-        "vehiclesettingrequester"
-    ]
-
-    def find_service(text):
-        text = str(text)
-        for svc in service_list:
-            if svc.lower() in text.lower():
-                return svc
-        return ""
-
-    df["Service name"] = df[col].apply(find_service)
-
-    # =========================
-    # 🔹 Empty Columns
-    # =========================
-    df["Change"] = ""
-    df["Service Cat."] = ""
-
-    return df  # 👈 สำคัญ! คืน df เดิม + columns ใหม่
-
-
-if raw_file:
+if raw_file and example_file:
     try:
-        df = read_file(raw_file)
+        df_raw = read_file(raw_file)
+        df_example = read_file(example_file)
 
         st.subheader("📥 Raw Data")
-        st.dataframe(df.head())
+        st.dataframe(df_raw.head())
 
-        result_df = generate_columns(df)
+        # 👇 เลือก column ที่จะใช้แทน D2 (กันพลาด)
+        selected_col = st.selectbox("📌 เลือก column สำหรับใช้ parse (แทน D2)", df_raw.columns)
 
-        st.subheader("✅ Result (All Columns + New Ones)")
+        # 👉 เอา column จาก example เป็น master
+        target_columns = list(df_example.columns)
+
+        st.subheader("📌 Target Columns")
+        st.write(target_columns)
+
+        result_df = pd.DataFrame()
+
+        for col in target_columns:
+
+            # =========================
+            # 🔥 System
+            # =========================
+            if col == "System":
+                result_df[col] = df_raw[selected_col].apply(
+                    lambda x: "TCAP Cloud" if "azure" in str(x).lower() else "LDCM"
+                )
+
+            # =========================
+            # 🔥 Error Name
+            # =========================
+            elif col == "Error Name":
+                error_list = [
+                    "E_000_017",
+                    "E_000_024",
+                    "E_040_001",
+                    "E_LDCM_ACT_009",
+                    "E_LDCM_ACT_011",
+                    "E_LDCM_ACT_021"
+                ]
+
+                def find_error(text):
+                    text = str(text)
+                    for err in error_list:
+                        if err.lower() in text.lower():
+                            return err
+                    return ""
+
+                result_df[col] = df_raw[selected_col].apply(find_error)
+
+            # =========================
+            # 🔥 Service name
+            # =========================
+            elif col == "Service name":
+                service_list = [
+                    "FDF Linkage",
+                    "fdftcaplinkage",
+                    "mb_accident_sending",
+                    "precnv_bigdata_periodic",
+                    "precnv_general_service",
+                    "precnv_ig_off",
+                    "ProvisioningResponder",
+                    "send_message",
+                    "B2B Linkage",
+                    "B2C Linkage",
+                    "dealer_at_ig_off",
+                    "dealer_device_abnormal",
+                    "drive_data_send",
+                    "external_ig_off",
+                    "external_mb_device_abnormal",
+                    "svt_confirmation_access_monitoring",
+                    "tcap_area_crossing_sending",
+                    "tcap_ig_off_sending",
+                    "tcap_periodic_sending",
+                    "tcap_svt_timeout",
+                    "tcap_uvun_ig_off_sending",
+                    "tcap_uvun_ig_on_sending",
+                    "vehicledeliverytcaplinkage",
+                    "VehicleDeliveryTCAPLinkageVin",
+                    "vehiclesettingrequester"
+                ]
+
+                def find_service(text):
+                    text = str(text)
+                    for svc in service_list:
+                        if svc.lower() in text.lower():
+                            return svc
+                    return ""
+
+                result_df[col] = df_raw[selected_col].apply(find_service)
+
+            # =========================
+            # 🧾 Column อื่น
+            # =========================
+            else:
+                if col in df_raw.columns:
+                    result_df[col] = df_raw[col]
+                else:
+                    result_df[col] = ""
+
+        st.subheader("✅ Result (Template + Auto Logic)")
         st.dataframe(result_df.head())
 
         # Download
@@ -111,7 +123,7 @@ if raw_file:
         st.download_button(
             label="📥 Download Result",
             data=csv,
-            file_name="output.csv",
+            file_name="standardized_data.csv",
             mime="text/csv"
         )
 
