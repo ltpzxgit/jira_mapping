@@ -1,9 +1,9 @@
 import streamlit as st
 import pandas as pd
 
-st.set_page_config(page_title="Column Filter Tool", layout="wide")
+st.set_page_config(page_title="Column Standardizer", layout="wide")
 
-st.title("🧹 Excel Column Filter Tool")
+st.title("📊 Excel Column Standardizer (Force Template Columns)")
 
 raw_file = st.file_uploader("📥 Upload RAW data", type=["csv", "xlsx"])
 example_file = st.file_uploader("📌 Upload Example (Template)", type=["csv", "xlsx"])
@@ -22,18 +22,23 @@ if raw_file and example_file:
         st.subheader("📥 Raw Data")
         st.dataframe(df_raw.head())
 
-        st.subheader("📌 Example Columns")
-        st.write(list(df_example.columns))
-
-        # 🔥 เอา columns จาก example
+        # 👉 เอา column จาก example เป็น master
         target_columns = list(df_example.columns)
 
-        # ✅ filter เฉพาะ columns ที่มีอยู่ใน raw
-        filtered_columns = [col for col in target_columns if col in df_raw.columns]
+        st.subheader("📌 Target Columns")
+        st.write(target_columns)
 
-        result_df = df_raw[filtered_columns]
+        # 🔥 สร้าง DataFrame ใหม่ตาม schema
+        result_df = pd.DataFrame()
 
-        st.subheader("✅ Result (Filtered Data)")
+        for col in target_columns:
+            if col in df_raw.columns:
+                result_df[col] = df_raw[col]
+            else:
+                # 👈 ถ้าไม่มีใน raw → สร้าง column เปล่า
+                result_df[col] = ""
+
+        st.subheader("✅ Result (Standardized Data)")
         st.dataframe(result_df.head())
 
         # Download
@@ -41,7 +46,7 @@ if raw_file and example_file:
         st.download_button(
             label="📥 Download Result",
             data=csv,
-            file_name="filtered_data.csv",
+            file_name="standardized_data.csv",
             mime="text/csv"
         )
 
