@@ -1,64 +1,47 @@
 import streamlit as st
 import pandas as pd
 
-st.set_page_config(page_title="Excel Transform Tool", layout="wide")
+st.set_page_config(page_title="Column Filter Tool", layout="wide")
 
-st.title("📊 Excel Transform Tool (Auto Generate Columns)")
+st.title("🧹 Excel Column Filter Tool")
 
-uploaded_file = st.file_uploader("Upload your raw data file", type=["csv", "xlsx"])
+raw_file = st.file_uploader("📥 Upload RAW data", type=["csv", "xlsx"])
+example_file = st.file_uploader("📌 Upload Example (Template)", type=["csv", "xlsx"])
 
-def transform_data(df):
-    # ====== ตัวอย่าง logic (แก้ได้ตามจริง) ======
-    
-    # สมมติ raw มี column ชื่อ Description
-    # แล้วเราจะ parse ข้อมูลออกมา
-    
-    df['System'] = df['Description'].str.extract(r'(FDF|L-DCM|ABC)', expand=False)
-    
-    df['Change'] = df['Description'].apply(
-        lambda x: "Update" if "update" in str(x).lower() else "Create"
-    )
-    
-    df['Error Name'] = df['Description'].apply(
-        lambda x: "Timeout" if "timeout" in str(x).lower() else "Unknown"
-    )
-    
-    df['Service name'] = df['Description'].apply(
-        lambda x: "Vehicle API" if "vehicle" in str(x).lower() else "General Service"
-    )
-    
-    df['Service Cat.'] = df['Service name'].apply(
-        lambda x: "Core" if "Vehicle" in x else "Support"
-    )
+def read_file(file):
+    if file.name.endswith('.csv'):
+        return pd.read_csv(file)
+    else:
+        return pd.read_excel(file)
 
-    # เลือกเฉพาะ columns ที่ต้องการ
-    output = df[['System', 'Change', 'Error Name', 'Service name', 'Service Cat.']]
-
-    return output
-
-if uploaded_file:
+if raw_file and example_file:
     try:
-        # อ่านไฟล์
-        if uploaded_file.name.endswith('.csv'):
-            df = pd.read_csv(uploaded_file)
-        else:
-            df = pd.read_excel(uploaded_file)
+        df_raw = read_file(raw_file)
+        df_example = read_file(example_file)
 
         st.subheader("📥 Raw Data")
-        st.dataframe(df)
+        st.dataframe(df_raw.head())
 
-        # Transform
-        result_df = transform_data(df)
+        st.subheader("📌 Example Columns")
+        st.write(list(df_example.columns))
 
-        st.subheader("✅ Transformed Data")
-        st.dataframe(result_df)
+        # 🔥 เอา columns จาก example
+        target_columns = list(df_example.columns)
+
+        # ✅ filter เฉพาะ columns ที่มีอยู่ใน raw
+        filtered_columns = [col for col in target_columns if col in df_raw.columns]
+
+        result_df = df_raw[filtered_columns]
+
+        st.subheader("✅ Result (Filtered Data)")
+        st.dataframe(result_df.head())
 
         # Download
         csv = result_df.to_csv(index=False).encode('utf-8')
         st.download_button(
             label="📥 Download Result",
             data=csv,
-            file_name="transformed_data.csv",
+            file_name="filtered_data.csv",
             mime="text/csv"
         )
 
