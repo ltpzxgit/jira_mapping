@@ -121,9 +121,9 @@ if raw_file and example_file:
         # Download
         csv = result_df.to_csv(index=False).encode('utf-8')
         st.download_button(
-            label="📥 Download Result",
+            label="Download Result",
             data=csv,
-            file_name="standardized_data.csv",
+            file_name="service mapping.csv",
             mime="text/csv"
         )
 
